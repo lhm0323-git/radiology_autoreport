@@ -1,0 +1,16 @@
+PyQt6
+rapidocr-onnxruntime
+pyautogui
+pyperclip
+mss
+opencv-python
+numpy
+onnxruntime
+torch
+torchvision
+transformers==4.40.1
+timm
+scikit-image
+pydicom
+pandas
+pyinstaller

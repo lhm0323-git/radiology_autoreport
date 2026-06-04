@@ -1,0 +1,132 @@
+{
+    "hotkeys": {
+        "start_scan": "alt+o",
+        "toggle_bmd": "shift+2",
+        "force_male": "shift+b",
+        "force_female": "shift+g",
+        "active_window_keywords": [
+            "ris",
+            "pacs",
+            "impax",
+            "屏基",
+            "醫療資訊系統"
+        ],
+        "suspend": "scroll_lock"
+    },
+    "monitors": {
+        "dexa_wb": 1,
+        "dexa_bmd": 2,
+        "dexa_calcium": 2,
+        "bone_age": 2
+    },
+    "roi_patient_info": {
+        "left_pct": 0.005,
+        "top_pct": 0.05,
+        "width_pct": 0.35,
+        "height_pct": 0.15
+    },
+    "roi_results_summary": {
+        "left_pct": 0.65,
+        "top_pct": 0.3,
+        "width_pct": 0.3,
+        "height_pct": 0.25
+    },
+    "roi_patient_id": {
+        "left_pct": 0.6073,
+        "top_pct": 0.2796,
+        "width_pct": 0.3526,
+        "height_pct": 0.037
+    },
+    "roi_bmd": {
+        "patient_info": {
+            "left_pct": 0.0091,
+            "top_pct": 0.2793,
+            "width_pct": 0.2624,
+            "height_pct": 0.1899
+        },
+        "results": {
+            "left_pct": 0.3132,
+            "top_pct": 0.5332,
+            "width_pct": 0.6816,
+            "height_pct": 0.2495
+        }
+    },
+    "roi_wb": {
+        "patient_info": {
+            "left_pct": 0.0026,
+            "top_pct": 0.2397,
+            "width_pct": 0.2917,
+            "height_pct": 0.127
+        },
+        "results": {
+            "left_pct": 0.5169,
+            "top_pct": 0.6851,
+            "width_pct": 0.3932,
+            "height_pct": 0.2617
+        }
+    },
+    "roi_calcium": {
+        "patient_info": {
+            "left_pct": 0.0013,
+            "top_pct": 0.5859,
+            "width_pct": 0.1081,
+            "height_pct": 0.0498
+        },
+        "results": {
+            "left_pct": 0.0195,
+            "top_pct": 0.6709,
+            "width_pct": 0.4609,
+            "height_pct": 0.1641
+        }
+    },
+    "roi_bone_age": {
+        "left_pct": 0.0013,
+        "top_pct": 0.2734,
+        "width_pct": 0.5026,
+        "height_pct": 0.5171
+    },
+    "whole_body_template": "Body Composition Assessment\n\n1.Total body fat percentage: {fat_percent}%\nResult: {fat_result}\nReference:\nMale:normal:<23%;overweight:23%~35%;obesity:>=35%\nFemale:normal:<25%;overweight:25%~38%;obesity:>=38%\n\n2.Estimated visceral adipose tissue (VAT area): {vat_area} cm2\nResult: {vat_result}\nReference:Normal:<100;Increased:100~160;High:>=160\n\n3.Appendicular Lean/Height2 (muscle mass) index: {lean_index} kg/m2\nResult: {lean_result}\nReference:AWGS 2019 (Asian Working Group for Sarcopenia)\nMale:Low lean mass:<7.0 kg/m2;normal:>=7.0 kg/m2\nFemale:Low lean mass:<5.4 kg/m2;normal:>=5.4kg/m2\n\n4.Android/Gynoid Ratio: {ag_ratio}\nResult: {ag_result}\nReference:>=1:Apple-shape; <1: Pear-shape",
+    "bmd_template": "BMD Assessment\nClassification: {classification}\n{score_type}: {score_value}",
+    "templates": {
+        "whole_body": "Body Composition Assessment\n\n1.Total body fat percentage: {fat_percent}%\nResult: {fat_result}\nReference:\nMale:normal:<23%;overweight:23%~35%;obesity:>=35%\nFemale:normal:<25%;overweight:25%~38%;obesity:>=38%\n\n2.Estimated visceral adipose tissue (VAT area): {vat_area} cm2\nResult: {vat_result}\nReference:Normal:<100;Increased:100~160;High:>=160\n\n3.Appendicular Lean/Height2 (muscle mass) index: {lean_index} kg/m2\nResult: {lean_result}\nReference:AWGS 2019 (Asian Working Group for Sarcopenia)\nMale:Low lean mass:<7.0 kg/m2;normal:>=7.0 kg/m2\nFemale:Low lean mass:<5.4 kg/m2;normal:>=5.4kg/m2\n\n4.Android/Gynoid Ratio: {ag_ratio}\nResult: {ag_result}\nReference:>=1:Apple-shape; <1: Pear-shape",
+        "bmd": "BMD Assessment\nClassification: {classification}\n{score_type}: {score_value}",
+        "calcium": "Agatston Score (Calcium Score)\n------------------------------\nL.MAIN:  {LM}\nLAD   :  {LAD}\nLCX   :  {CX}\nRCA   :  {RCA}\n------------------------------\nTotal :  {Total}\nTotal Calcium Score was {Total}"
+    },
+    "bone_age_template": "According The Radiographic Atlas of Skeletal Development of  The Hand and Wrist.\nThe skeletal age is about {age_range} old.",
+    "bone_age_bias_offset_months": -5.0,
+    "bone_age_atlas_path": "D:\\download\\Atlas_of_Hand_Bone_Age.pdf",
+    "bone_age_viewer_path": "D:\\programs\\PDF-XChange Viewer_2.5.311\\PDFXCview.exe",
+    "auto_detect": {
+        "enabled": false,
+        "monitor_idx": 3,
+        "ris_fallback_enabled": false,
+        "poll_interval_seconds": 5.0,
+        "delay_after_detect": 2.0,
+        "roi": {
+            "left_pct": 0.6073,
+            "top_pct": 0.2796,
+            "width_pct": 0.3526,
+            "height_pct": 0.037
+        }
+    },
+    "click_before_paste": {
+        "enabled": true,
+        "monitor_idx": 3,
+        "x_pct": 0.7547,
+        "y_pct": 0.4981
+    },
+    "paste_timing": {
+        "modifier_release_delay": 0.02,
+        "focus_click_delay": 0.15,
+        "key_hold_delay": 0.03,
+        "after_select_delay": 0.05,
+        "after_clear_delay": 0.05,
+        "clipboard_retry_delay": 0.03
+    },
+    "ocr_performance": {
+        "threads": 2,
+        "warm_up_on_start": true
+    },
+    "manual_trigger_migration_20260604": true,
+    "calcium_template": "Agatston Score (Calcium Score)\n------------------------------\nL.MAIN:  {LM}\nLAD   :  {LAD}\nLCX   :  {CX}\nRCA   :  {RCA}\n------------------------------\nTotal :  {Total}\nTotal Calcium Score was {Total}"
+}
