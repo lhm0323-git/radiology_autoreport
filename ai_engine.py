@@ -46,6 +46,14 @@ class BoneAgeAIEngine:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Initializing AI Engine on {self.device}...")
+
+        if getattr(sys, 'frozen', False):
+            application_path = os.path.dirname(sys.executable)
+        else:
+            application_path = os.path.dirname(os.path.abspath(__file__))
+
+        bundled_cache = os.path.join(application_path, "hf_cache", "hub")
+        cache_dir = bundled_cache if os.path.isdir(bundled_cache) else None
         
         try:
             # Load Crop Model from local cache only for deterministic offline deployment.
@@ -53,6 +61,7 @@ class BoneAgeAIEngine:
                 "ianpan/bone-age-crop",
                 trust_remote_code=True,
                 local_files_only=True,
+                cache_dir=cache_dir,
             )
             self.crop_model = self.crop_model.eval().to(self.device)
 
@@ -61,17 +70,13 @@ class BoneAgeAIEngine:
                 "ianpan/bone-age",
                 trust_remote_code=True,
                 local_files_only=True,
+                cache_dir=cache_dir,
             )
             self.main_model = self.main_model.eval().to(self.device)
         except Exception as e:
             print("AI model files were not found in the local HuggingFace cache.")
-            print("Run preload_models.py once in a network-enabled environment, then retry offline.")
+            print("Bundle hf_cache with the portable package, or preload the models once in a network-enabled environment.")
             raise e
-        
-        if getattr(sys, 'frozen', False):
-            application_path = os.path.dirname(sys.executable)
-        else:
-            application_path = os.path.dirname(os.path.abspath(__file__))
             
         self.ref_img_path = os.path.join(application_path, "ref_img.png")
         if not os.path.exists(self.ref_img_path):

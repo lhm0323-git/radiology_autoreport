@@ -39,17 +39,34 @@ def _hf_cache_roots(env=None):
     return list(dict.fromkeys(roots))
 
 
+def _bundled_hf_cache_root(base_dir):
+    return Path(base_dir) / "hf_cache" / "hub"
+
+
 def _hf_model_cache_name(model_id):
     return "models--" + model_id.replace("/", "--")
 
 
-def _has_hf_model_cache(model_id, env=None):
+def _has_hf_model_cache(model_id, env=None, base_dir=None):
     model_dir_name = _hf_model_cache_name(model_id)
-    for root in _hf_cache_roots(env):
+    roots = []
+    if base_dir is not None:
+        roots.append(_bundled_hf_cache_root(base_dir))
+    roots.extend(_hf_cache_roots(env))
+    for root in list(dict.fromkeys(roots)):
         model_dir = root / model_dir_name
         if model_dir.exists():
             return True
     return False
+
+
+def _resolve_runtime_path(base_dir, value):
+    if not value:
+        return None
+    expanded = Path(os.path.expandvars(os.path.expanduser(value)))
+    if expanded.is_absolute():
+        return expanded
+    return Path(base_dir) / expanded
 
 
 def run_preflight(base_dir, config, strict_external=False, env=None):
@@ -68,7 +85,7 @@ def run_preflight(base_dir, config, strict_external=False, env=None):
             missing.append(asset_name)
 
     for model_id in REQUIRED_HF_MODELS:
-        if not _has_hf_model_cache(model_id, env):
+        if not _has_hf_model_cache(model_id, env, base):
             message = f"local HuggingFace cache missing for {model_id}"
             if strict_external:
                 missing.append(message)
@@ -83,7 +100,7 @@ def run_preflight(base_dir, config, strict_external=False, env=None):
         if not value:
             missing.append(key)
             continue
-        if not Path(value).exists():
+        if not _resolve_runtime_path(base, value).exists():
             message = f"{key} not found: {value}"
             if strict_external:
                 missing.append(message)

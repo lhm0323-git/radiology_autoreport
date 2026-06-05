@@ -2,6 +2,7 @@ import json
 import math
 import os
 import re
+import sys
 import time
 
 from capture import capture_bone_age_roi
@@ -108,7 +109,12 @@ class BoneAgeModule:
 
     def __init__(self, ai_engine, base_dir: str | None = None):
         self.ai_engine = ai_engine
-        self.base_dir = base_dir or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if base_dir is not None:
+            self.base_dir = base_dir
+        elif getattr(sys, "frozen", False):
+            self.base_dir = os.path.dirname(sys.executable)
+        else:
+            self.base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in self.task_types

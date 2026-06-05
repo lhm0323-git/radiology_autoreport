@@ -53,6 +53,19 @@ from modules import BoneAgeModule, DexaModule, ModuleContext
 from platform_routing import build_hotkey_task_map, parse_hotkey, route_dexa_from_ris_lines
 from single_instance import acquire_single_instance
 
+
+def resolve_app_path(path_value):
+    if not path_value:
+        return path_value
+    expanded = os.path.expandvars(os.path.expanduser(path_value))
+    if os.path.isabs(expanded):
+        return expanded
+    if getattr(sys, "frozen", False):
+        application_path = os.path.dirname(sys.executable)
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(application_path, expanded)
+
 class AppManager:
     def create_text_icon(self, text, bg_color):
         pixmap = QPixmap(32, 32)
@@ -601,8 +614,8 @@ class AppManager:
             self.log_event(f"Error processing: {e}")
 
     def open_bone_age_pdf(self, target_page):
-        pdf_path = self.config.get("bone_age_atlas_path", r"D:\download\Atlas_of_Hand_Bone_Age.pdf")
-        pdf_viewer = self.config.get("bone_age_viewer_path", r"D:\programs\PDF-XChange Viewer_2.5.311\PDFXCview.exe")
+        pdf_path = resolve_app_path(self.config.get("bone_age_atlas_path", r"D:\download\Atlas_of_Hand_Bone_Age.pdf"))
+        pdf_viewer = resolve_app_path(self.config.get("bone_age_viewer_path", r"D:\programs\PDF-XChange Viewer_2.5.311\PDFXCview.exe"))
 
         if not os.path.exists(pdf_path):
             self.log_event(f"Atlas PDF not found at {pdf_path}")
