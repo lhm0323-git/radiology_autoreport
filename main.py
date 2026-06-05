@@ -47,6 +47,22 @@ class LazyBoneAgeAI:
                     self._engine = BoneAgeAIEngine()
         return self._engine.predict(image, is_female)
 
+    def unload(self):
+        with self._lock:
+            if self._engine is None:
+                return False
+            self._engine = None
+
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        return True
+
 from config_manager import load_config, save_config
 from ocr_engine import OCREngine
 from modules import BoneAgeModule, DexaModule, ModuleContext
@@ -303,13 +319,26 @@ class AppManager:
         self.is_suspended = checked
         if checked:
             self.tray.setIcon(self.icon_ds)
-            self.tray.showMessage("Reporter Suspended", "Auto-detect and hotkeys are paused.", QSystemTrayIcon.MessageIcon.Warning, 2000)
+            unloaded = self.unload_bone_age_ai()
+            message = "Auto-detect and hotkeys are paused."
+            if unloaded:
+                message += " Bone Age AI model unloaded."
+            self.tray.showMessage("Reporter Suspended", message, QSystemTrayIcon.MessageIcon.Warning, 2000)
             if self.hotkeys_registered:
                 self.unregister_all_hotkeys()
         else:
             self.tray.setIcon(self.icon_da)
             self.tray.showMessage("Reporter Active", "Resuming operations.", QSystemTrayIcon.MessageIcon.Information, 2000)
             self.check_active_window()
+
+    def unload_bone_age_ai(self):
+        bone_age_ai = getattr(self, "bone_age_ai", None)
+        if bone_age_ai is None:
+            return False
+        unloaded = bone_age_ai.unload()
+        if unloaded:
+            self.log_event("Bone Age AI model unloaded.")
+        return unloaded
             
     def reload_config(self):
         self.config = load_config()
