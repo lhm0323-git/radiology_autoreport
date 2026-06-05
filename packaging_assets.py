@@ -3,6 +3,7 @@ from pathlib import Path
 
 REQUIRED_RUNTIME_FILES = [
     "main.py",
+    "AGENT_HANDOFF.md",
     "config_manager.py",
     "settings_ui.py",
     "platform_routing.py",
