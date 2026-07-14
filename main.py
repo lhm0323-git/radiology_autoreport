@@ -65,6 +65,7 @@ class LazyBoneAgeAI:
 
 from config_manager import load_config, save_config
 from ocr_engine import OCREngine
+import parser as report_parser
 from modules import BoneAgeModule, DexaModule, ModuleContext
 from platform_routing import build_hotkey_task_map, parse_hotkey, route_dexa_from_ris_lines
 from single_instance import acquire_single_instance
@@ -377,6 +378,7 @@ class AppManager:
         self.ocr = OCREngine(self.config)
         if self.config.get("ocr_performance", {}).get("warm_up_on_start", True):
             threading.Thread(target=self.ocr.warm_up, daemon=True).start()
+            threading.Thread(target=report_parser.warm_up_mesa_percentile, daemon=True).start()
         self.bone_age_ai = LazyBoneAgeAI()
         dexa_module = DexaModule()
         self.modules = {

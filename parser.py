@@ -1,4 +1,5 @@
 import re
+import threading
 import urllib.parse
 import urllib.request
 
@@ -543,6 +544,8 @@ def parse_bmd_v2(ocr_results):
 
 MESA_CALCIUM_URL = "https://tools.mesa-nhlbi.org/Calcium/input.aspx"
 MESA_RACE_VALUES = {"black": "0", "chinese": "1", "hispanic": "2", "white": "3"}
+_MESA_FORM_CACHE = None
+_MESA_FORM_LOCK = threading.RLock()
 
 
 def _mesa_gender_value(sex):
@@ -571,6 +574,35 @@ def parse_mesa_percentile_html(html_text):
     return int(round(float(number.group(0)))) if number else None
 
 
+def _fetch_mesa_form(timeout=3):
+    global _MESA_FORM_CACHE
+    with _MESA_FORM_LOCK:
+        if _MESA_FORM_CACHE is not None:
+            return dict(_MESA_FORM_CACHE)
+
+        with urllib.request.urlopen(MESA_CALCIUM_URL, timeout=timeout) as response:
+            page = response.read().decode("utf-8", errors="replace")
+        _MESA_FORM_CACHE = {
+            "__VIEWSTATE": _html_input_value(page, "__VIEWSTATE"),
+            "__VIEWSTATEGENERATOR": _html_input_value(page, "__VIEWSTATEGENERATOR"),
+            "__EVENTVALIDATION": _html_input_value(page, "__EVENTVALIDATION"),
+            "Calculate": "Calculate",
+            "SmartScroller1_ScrollX": "0",
+            "SmartScroller1_ScrollY": "0",
+            "SmartScroller2_ScrollX": "0",
+            "SmartScroller2_ScrollY": "0",
+        }
+        return dict(_MESA_FORM_CACHE)
+
+
+def warm_up_mesa_percentile(timeout=3):
+    try:
+        _fetch_mesa_form(timeout=timeout)
+        print("[MESA] Warm-up complete.")
+    except Exception as exc:
+        print(f"[MESA] Warm-up skipped: {exc}")
+
+
 def fetch_mesa_percentile(age, sex, score, race="chinese", timeout=3):
     if age is None or score is None:
         print(f"[MESA] percentile lookup skipped: missing age or score (age={age}, score={score})")
@@ -585,22 +617,8 @@ def fetch_mesa_percentile(age, sex, score, race="chinese", timeout=3):
         print(f"[MESA] percentile lookup skipped: missing sex or unsupported race (sex={sex}, race={race})")
         return None
 
-    with urllib.request.urlopen(MESA_CALCIUM_URL, timeout=timeout) as response:
-        page = response.read().decode("utf-8", errors="replace")
-    form = {
-        "__VIEWSTATE": _html_input_value(page, "__VIEWSTATE"),
-        "__VIEWSTATEGENERATOR": _html_input_value(page, "__VIEWSTATEGENERATOR"),
-        "__EVENTVALIDATION": _html_input_value(page, "__EVENTVALIDATION"),
-        "Age": str(age),
-        "gender": gender,
-        "Race": race_value,
-        "Score": str(score),
-        "Calculate": "Calculate",
-        "SmartScroller1_ScrollX": "0",
-        "SmartScroller1_ScrollY": "0",
-        "SmartScroller2_ScrollX": "0",
-        "SmartScroller2_ScrollY": "0",
-    }
+    form = _fetch_mesa_form(timeout=timeout)
+    form.update({"Age": str(age), "gender": gender, "Race": race_value, "Score": str(score)})
     data = urllib.parse.urlencode(form).encode("ascii")
     request = urllib.request.Request(MESA_CALCIUM_URL, data=data, method="POST")
     with urllib.request.urlopen(request, timeout=timeout) as response:

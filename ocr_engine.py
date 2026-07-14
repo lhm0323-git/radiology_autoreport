@@ -40,9 +40,27 @@ class OCREngine:
     def warm_up(self):
         """Load OCR models before the first hotkey-triggered workflow."""
         try:
+            import cv2
             import numpy as np
-            image = np.full((64, 256, 3), 255, dtype=np.uint8)
-            self.extract_text(image)
+
+            patient = np.zeros((110, 320, 3), dtype=np.uint8)
+            for i, line in enumerate(["1968/09/27", "057Y", "M"]):
+                cv2.putText(patient, line, (8, 28 + i * 32), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (240, 240, 240), 2)
+
+            table = np.zeros((260, 720, 3), dtype=np.uint8)
+            rows = [
+                "Artery   Lesions   Volume/mm3   Equiv.Mass/mg   Score",
+                "LM       0         0.0          0.00            0.0",
+                "LAD      1         10.5         1.88            9.1",
+                "CX       0         0.0          0.00            0.0",
+                "RCA      0         0.0          0.00            0.0",
+                "Total    1         10.5         1.88            9.1",
+            ]
+            for i, line in enumerate(rows):
+                cv2.putText(table, line, (8, 32 + i * 36), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (235, 235, 235), 2)
+
+            self.extract_text(patient)
+            self.extract_text(table)
             print("[OCR] Warm-up complete.")
         except Exception as e:
             print(f"[OCR] Warm-up failed: {e}")
