@@ -22,7 +22,7 @@ class FakeOcr:
 
 
 class TestDexaModuleIntegration(unittest.TestCase):
-    def test_calcium_mode_uses_shared_services_and_skips_patient_ocr(self):
+    def test_calcium_mode_uses_shared_services_and_patient_ocr(self):
         import modules.dexa as dexa_module
 
         captured = {}
@@ -40,7 +40,8 @@ class TestDexaModuleIntegration(unittest.TestCase):
             [box(0, 120, 640, 140), "RCA 0 0.0 0.00 0.0", 0.95],
             [box(0, 180, 640, 200), "Total 1 5.2 0.95 4.5", 0.95],
         ]
-        fake_ocr = FakeOcr(results_result=calcium_ocr)
+        patient_ocr = [[box(0, 0, 80, 20), "057Y M", 0.95]]
+        fake_ocr = FakeOcr(patient_result=patient_ocr, results_result=calcium_ocr)
         pasted = []
 
         original_capture = dexa_module.capture_screen_rois
@@ -59,7 +60,7 @@ class TestDexaModuleIntegration(unittest.TestCase):
             dexa_module.capture_screen_rois = original_capture
 
         self.assertEqual(captured, {"monitor_idx": 2, "mode": "calcium"})
-        self.assertEqual(fake_ocr.calls, ["results"])
+        self.assertEqual(fake_ocr.calls[:2], ["patient", "results"])
         self.assertIn("Agatston Score (Calcium Score)", pasted[0])
         self.assertEqual(result.module_id, "dexa")
         self.assertEqual(result.metadata["mode"], "calcium")

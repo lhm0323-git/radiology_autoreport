@@ -1,4 +1,6 @@
 import re
+import urllib.parse
+import urllib.request
 
 def _safe_console_text(text):
     encoding = getattr(__import__("sys").stdout, "encoding", None) or "utf-8"
@@ -50,17 +52,17 @@ def parse_patient_info(ocr_results):
     for line in lines:
         line_lower = line.lower()
         line_stripped = line.strip()
+        line_age = line_lower.replace('o', '0').replace('O', '0')
         
         # Extract Sex
-        if re.search(r'\bsex\b', line_lower):
-            if "female" in line_lower:
-                info["Sex"] = "Female"
-            elif "male" in line_lower:
-                info["Sex"] = "Male"
-            else:
-                parts = line.split(":")
-                if len(parts) > 1 and parts[1].strip().lower() in ["female", "male"]:
-                    info["Sex"] = parts[1].strip().capitalize()
+        if info["Sex"] is None and "female" in line_lower:
+            info["Sex"] = "Female"
+        elif info["Sex"] is None and "male" in line_lower:
+            info["Sex"] = "Male"
+        elif re.search(r'\bsex\b', line_lower):
+            parts = line.split(":")
+            if len(parts) > 1 and parts[1].strip().lower() in ["female", "male"]:
+                info["Sex"] = parts[1].strip().capitalize()
 
         # Extract Age
         # Handle "Age", "Ape" (OCR error), "Age:", etc.
@@ -76,12 +78,14 @@ def parse_patient_info(ocr_results):
                 info["Menopause Age"] = int(nums[-1])
 
         if info["Age"] is None:
-            age_match = re.search(r'\b0*(\d{1,3})\s*y\b', line_lower)
+            age_match = re.search(r'\b[fm]?\s*0*(\d{1,3})\s*y(?:\b|[fm])', line_age)
             if age_match:
                 info["Age"] = int(age_match.group(1))
 
-        if info["Sex"] is None and re.fullmatch(r'[mf]', line_stripped, re.IGNORECASE):
-            info["Sex"] = "Male" if line_stripped.lower() == "m" else "Female"
+        sex_token = re.search(r'(?:^|\s)([mf])(?:\s|$)|\b0*\d{1,3}\s*y\s*([mf])\b|\b([mf])\s*0*\d{1,3}\s*y\b', line_stripped, re.IGNORECASE)
+        if info["Sex"] is None and sex_token:
+            sex_value = next(group for group in sex_token.groups() if group)
+            info["Sex"] = "Male" if sex_value.lower() == "m" else "Female"
                 
     return info
 
@@ -302,6 +306,8 @@ def parse_calcium_scores(ocr_results):
     """
     vessels = ("LM", "LAD", "CX", "RCA", "Total")
     data = {vessel: None for vessel in vessels}
+    vessel_y = {}
+    unlabeled_scores = []
     rows = _group_ocr_rows(ocr_results)
 
     score_x = None
@@ -330,9 +336,6 @@ def parse_calcium_scores(ocr_results):
         elif "total" in normalized:
             vessel = "Total"
 
-        if vessel is None:
-            continue
-
         candidates = []
         for box, text in row["items"]:
             values = _parse_score_numbers(text)
@@ -347,8 +350,21 @@ def parse_calcium_scores(ocr_results):
         else:
             _, value, raw_text = max(candidates, key=lambda item: item[0])
 
+        if vessel is None:
+            unlabeled_scores.append((row["y"], value, raw_text))
+            continue
+
         data[vessel] = value
+        vessel_y[vessel] = row["y"]
         print(f"[Calcium] {vessel}: {value} from '{raw_text}'")
+
+    if data["CX"] is None and "LAD" in vessel_y and "RCA" in vessel_y:
+        low, high = sorted((vessel_y["LAD"], vessel_y["RCA"]))
+        between = [item for item in unlabeled_scores if low < item[0] < high]
+        if between:
+            _, value, raw_text = between[0]
+            data["CX"] = value
+            print(f"[Calcium] CX: {value} from unlabeled row '{raw_text}'")
 
     data["is_valid"] = all(data[vessel] is not None for vessel in vessels)
     return data
@@ -525,6 +541,93 @@ def parse_bmd_v2(ocr_results):
     data["is_valid"] = data["t_score"] is not None
     return data
 
+MESA_CALCIUM_URL = "https://tools.mesa-nhlbi.org/Calcium/input.aspx"
+MESA_RACE_VALUES = {"black": "0", "chinese": "1", "hispanic": "2", "white": "3"}
+
+
+def _mesa_gender_value(sex):
+    text = str(sex or "").strip().lower()
+    if text.startswith("f"):
+        return "0"
+    if text.startswith("m"):
+        return "1"
+    return None
+
+
+def _html_input_value(html_text, name):
+    tag_match = re.search(rf'<input\b[^>]*\bname="{re.escape(name)}"[^>]*>', html_text, re.IGNORECASE)
+    if not tag_match:
+        return ""
+    value_match = re.search(r'\bvalue="([^"]*)"', tag_match.group(0), re.IGNORECASE)
+    return value_match.group(1) if value_match else ""
+
+
+def parse_mesa_percentile_html(html_text):
+    match = re.search(r'id="percLabel"[^>]*>(.*?)</span>', html_text, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    text = re.sub(r"<[^>]+>", "", match.group(1)).strip()
+    number = re.search(r"[0-9]+(?:\.[0-9]+)?", text)
+    return int(round(float(number.group(0)))) if number else None
+
+
+def fetch_mesa_percentile(age, sex, score, race="chinese", timeout=3):
+    if age is None or score is None:
+        print(f"[MESA] percentile lookup skipped: missing age or score (age={age}, score={score})")
+        return None
+    age = int(age)
+    if age < 45 or age > 84:
+        print(f"[MESA] percentile lookup skipped: age out of supported range ({age})")
+        return None
+    gender = _mesa_gender_value(sex)
+    race_value = MESA_RACE_VALUES.get(str(race or "chinese").strip().lower())
+    if gender is None or race_value is None:
+        print(f"[MESA] percentile lookup skipped: missing sex or unsupported race (sex={sex}, race={race})")
+        return None
+
+    with urllib.request.urlopen(MESA_CALCIUM_URL, timeout=timeout) as response:
+        page = response.read().decode("utf-8", errors="replace")
+    form = {
+        "__VIEWSTATE": _html_input_value(page, "__VIEWSTATE"),
+        "__VIEWSTATEGENERATOR": _html_input_value(page, "__VIEWSTATEGENERATOR"),
+        "__EVENTVALIDATION": _html_input_value(page, "__EVENTVALIDATION"),
+        "Age": str(age),
+        "gender": gender,
+        "Race": race_value,
+        "Score": str(score),
+        "Calculate": "Calculate",
+        "SmartScroller1_ScrollX": "0",
+        "SmartScroller1_ScrollY": "0",
+        "SmartScroller2_ScrollX": "0",
+        "SmartScroller2_ScrollY": "0",
+    }
+    data = urllib.parse.urlencode(form).encode("ascii")
+    request = urllib.request.Request(MESA_CALCIUM_URL, data=data, method="POST")
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        result = response.read().decode("utf-8", errors="replace")
+    return parse_mesa_percentile_html(result)
+
+
+def add_mesa_percentile(patient_info, results_data, race="chinese"):
+    try:
+        percentile = fetch_mesa_percentile(patient_info.get("Age"), patient_info.get("Sex"), results_data.get("Total"), race=race)
+    except Exception as exc:
+        print(f"[MESA] percentile lookup skipped: {exc}")
+        return results_data
+    if percentile is not None:
+        results_data["mesa_percentile"] = percentile
+        print(f"[MESA] percentile={percentile}%")
+    return results_data
+
+
+def append_mesa_to_calcium_report(report, total, percentile):
+    if percentile is None or "MESA" in report:
+        return report
+    total_text = str(total)
+    pattern = rf"(Total Calcium Score was\s+{re.escape(total_text)})(?![,\d.])"
+    return re.sub(pattern, rf"\1, MESA {int(percentile)}%", report)
+
+
 def apply_clinical_logic(patient_info, mode, results_data, config, force_toggle=False):
     # Get templates from config
     templates = config.get("templates", {})
@@ -622,7 +725,9 @@ def apply_clinical_logic(patient_info, mode, results_data, config, force_toggle=
                 "Total Calcium Score was {Total}",
             ),
         ).replace("\n", "\r\n")
-        return template.format(**values), results_data
+        report = template.format(**values)
+        report = append_mesa_to_calcium_report(report, values["Total"], results_data.get("mesa_percentile"))
+        return report, results_data
 
     else: # BMD
         age = patient_info.get("Age")
@@ -665,7 +770,7 @@ def apply_clinical_logic(patient_info, mode, results_data, config, force_toggle=
         if score_value is not None:
             if use_t_score:
                 if score_value >= -1.0: classification = "骨質正常( normal )"
-                elif score_value > -2.5: classification = "骨質缺乏( osteopenia )"
+                elif score_value > -2.5: classification = "低骨量 ( low bone mass )"
                 else: classification = "骨質疏鬆( osteoporosis )"
             else:
                 if score_value <= -2.0: classification = "低於同齡預期值( below the expected range for age )"
@@ -703,7 +808,7 @@ def apply_clinical_logic(patient_info, mode, results_data, config, force_toggle=
             "",
             "1. 本報告參考 ISCD (International Society for Clinical Densitometry) 及中華民國骨鬆症醫學會指引，旨在提供臨床醫師最直覺的診斷數據。",
             "",
-            "2. [Postmenopausal women / Men age >= 50] 停經後婦女和50 歲以上男性的骨密度診斷標準採用T值，且用白人女性平均值為台灣男女性T值參考資料庫。T >= -1.0 骨質正常(Normal); -2.5 < T < -1.0 骨質缺乏(Osteopenia); T <= -2.5 骨質疏鬆(Osteoporosis)",
+            "2. [Postmenopausal women / Men age >= 50] 停經後婦女和50 歲以上男性的骨密度診斷標準採用T值，且用白人女性平均值為台灣男女性T值參考資料庫。T >= -1.0 骨質正常(Normal); -2.5 < T < -1.0 低骨量 ( low bone mass ); T <= -2.5 骨質疏鬆(Osteoporosis)",
             "",
             "3. [Premenopausal women / Men < 50] 停經前婦女和低於50 歲男性的骨密度報告採用Z值，而非T值. 當Z值等於或小於-2.0 時稱之為低於同齡的預期值(below the expected range for age)，當Z值大於-2.0 時稱之為介於同齡的預期值(within the expected range for age)。",
         ]

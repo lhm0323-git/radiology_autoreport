@@ -7,6 +7,7 @@ __pycache__/
 pytest-cache-files-*/
 
 build/
+build_pack/
 dist/
 *.spec.local
 

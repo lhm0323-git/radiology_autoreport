@@ -1,6 +1,6 @@
 # Agent Handoff: Radiology Auto Reporter
 
-Updated: 2026-06-05
+Updated: 2026-07-14
 
 This is the active unified clinical runtime for radiology auto-reporting. It
 integrates DEXA Whole Body, BMD, Calcium Score, and Bone Age into one Windows
@@ -119,7 +119,7 @@ On every new workstation, use tray menu `ROI Calibration`:
 - RIS Paste Focus: click inside RIS report edit field.
 - BMD ROI: patient info and results table.
 - Whole Body ROI: patient info and results area.
-- Calcium ROI: table area.
+- Calcium ROI: patient demographics area first, then calcium score table area.
 - Bone Age Hand ROI: full hand/wrist/distal radius-ulna with small margin.
 
 Use `Reload Config` or restart after calibration.
@@ -181,7 +181,7 @@ python -m unittest discover -s tests
 Current known status:
 
 - `verify_unified.py`: pass.
-- Unit tests: 44 tests pass.
+- Unit tests: 50 tests pass.
 - Clinical workstation workflow has been manually tested for DEXA, Calcium, and
   Bone Age in the unified app.
 - PDF jump and RIS paste were tested in the clinical workstation flow.
@@ -198,6 +198,8 @@ Current known status:
 - Do not restore gender OCR for Bone Age clinical execution unless explicitly
   revalidated.
 - Do not broaden ROIs for speed without checking OCR misrouting risk.
+- Do not rely on non-fixed panels such as the right-lower MESA graph for patient sex;
+  calcium sex fallback should use the calibrated patient ROI only.
 - Build/dist are generated artifacts and should stay out of git.
 
 ## Source Workspace Sync
@@ -219,7 +221,7 @@ If upgrading a module:
 
 Recommended:
 
-- Add more real OCR fixtures for BMD, Whole Body, and Calcium Score.
+- Add more real OCR fixtures for BMD, Whole Body, Calcium Score, and MESA sex/age fallback.
 - Add workstation log export/import convenience around `workstation_log_check.py`.
 - Improve package size only after proving no runtime dependency breaks.
 - Add Bone Age calibration reporting by age/sex bins if enough corrected labels

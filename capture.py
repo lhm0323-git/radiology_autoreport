@@ -42,6 +42,8 @@ def capture_screen_rois(monitor_idx, config, mode=None):
         pi_top = int(height * pi_cfg["top_pct"])
         pi_width = int(width * pi_cfg["width_pct"])
         pi_height = int(height * pi_cfg["height_pct"])
+        if mode == "calcium":
+            pi_height = min(height - pi_top, int(pi_height * 1.4))
         patient_img = screenshot[pi_top:pi_top+pi_height, pi_left:pi_left+pi_width]
         
         rs_left = int(width * rs_cfg["left_pct"])

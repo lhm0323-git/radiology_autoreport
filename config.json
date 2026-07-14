@@ -67,16 +67,16 @@
     },
     "roi_calcium": {
         "patient_info": {
-            "left_pct": 0.0013,
-            "top_pct": 0.5859,
-            "width_pct": 0.1081,
-            "height_pct": 0.0498
+            "left_pct": 0.0007,
+            "top_pct": 0.5864,
+            "width_pct": 0.2181,
+            "height_pct": 0.0752
         },
         "results": {
-            "left_pct": 0.0195,
-            "top_pct": 0.6709,
-            "width_pct": 0.4609,
-            "height_pct": 0.1641
+            "left_pct": 0.0033,
+            "top_pct": 0.667,
+            "width_pct": 0.4902,
+            "height_pct": 0.1826
         }
     },
     "roi_bone_age": {

@@ -109,6 +109,30 @@ class TestDexaParser(unittest.TestCase):
         self.assertEqual(info["Age"], 59)
         self.assertEqual(info["Sex"], "Male")
 
+    def test_patient_info_accepts_inline_calcium_age_and_sex(self):
+        ocr_res = [
+            [box(0, 0, 120, 20), "080Y F", 0.95],
+        ]
+
+        info = p.parse_patient_info(ocr_res)
+
+        self.assertEqual(info["Age"], 80)
+        self.assertEqual(info["Sex"], "Female")
+
+
+    def test_patient_info_accepts_ocr_o_for_zero_age(self):
+        info = p.parse_patient_info([[box(0, 0, 120, 20), "O57Y M", 0.95]])
+
+        self.assertEqual(info["Age"], 57)
+        self.assertEqual(info["Sex"], "Male")
+
+    def test_patient_info_accepts_compact_calcium_age_and_sex(self):
+        for text in ["080YF", "F080Y"]:
+            with self.subTest(text=text):
+                info = p.parse_patient_info([[box(0, 0, 120, 20), text, 0.95]])
+                self.assertEqual(info["Age"], 80)
+                self.assertEqual(info["Sex"], "Female")
+
     def test_whole_body_parsing(self):
         ocr_res = [
             [box(0, 0, 100, 10), "Total Body % Fat", 0.95],
@@ -182,6 +206,36 @@ class TestDexaParser(unittest.TestCase):
         self.assertEqual(data["CX"], 0.0)
         self.assertEqual(data["RCA"], 0.0)
         self.assertEqual(data["Total"], 4.5)
+
+    def test_calcium_score_parsing_unlabeled_cx_between_lad_and_rca(self):
+        ocr_res = [
+            [box(0, 0, 640, 20), "Artery Lesions Volume Equiv Mass Score", 0.95],
+            [box(0, 30, 640, 50), "LM 0 0.0 0.00 0.0", 0.95],
+            [box(0, 60, 640, 80), "LAD 4 139.2 38.56 171.4", 0.95],
+            [box(550, 90, 640, 110), "16.5", 0.95],
+            [box(0, 120, 640, 140), "RCA 1 17.8 3.41 18.9", 0.95],
+            [box(0, 150, 640, 170), "Total 7 174.5 45.64 206.8", 0.95],
+        ]
+
+        data = p.parse_calcium_scores(ocr_res)
+
+        self.assertTrue(data["is_valid"])
+        self.assertEqual(data["CX"], 16.5)
+
+    def test_mesa_percentile_html_parsing(self):
+        html = '<span id="percLabel"><b><font color="#00C000">80</font></b></span>'
+
+        self.assertEqual(p.parse_mesa_percentile_html(html), 80)
+
+    def test_calcium_report_output_with_mesa_percentile(self):
+        results_data = {"LM": 0.0, "LAD": 171.4, "CX": 16.5, "RCA": 18.9, "Total": 206.8, "mesa_percentile": 80}
+        config = {"calcium_template": "Agatston Score (Calcium Score)\nTotal Calcium Score was {Total}"}
+
+        report, data = p.apply_clinical_logic({}, "calcium", results_data, config)
+
+        self.assertIn("Total Calcium Score was 206.8, MESA 80%", report)
+        self.assertIs(data, results_data)
+
 
     def test_calcium_report_output(self):
         results_data = {"LM": 0.0, "LAD": 4.5, "CX": 0.0, "RCA": 0.0, "Total": 4.5}
