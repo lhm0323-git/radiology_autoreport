@@ -117,6 +117,8 @@ class DexaModule:
                     patient_info["Sex"] = inferred_sex
                     context.notify(f"[Calcium] Sex inferred from patient ROI image: {inferred_sex}")
             if patient_info.get("Age") is None or patient_info.get("Sex") is None:
+                cv2.imwrite("calcium_patient_roi_debug.png", patient_img)
+                context.notify(f"[Calcium] Saved patient ROI debug image: calcium_patient_roi_debug.png ({patient_img.shape[1]}x{patient_img.shape[0]})")
                 context.notify(f"[Calcium] Patient OCR text: {_ocr_texts(patient_res)}")
                 context.notify(f"[Calcium] Parsed patient info: {patient_info}")
 
