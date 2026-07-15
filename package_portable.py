@@ -1,4 +1,5 @@
 import argparse
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -9,6 +10,12 @@ import preflight_check
 
 
 APP_NAME = "Radiology_Auto_Reporter"
+
+
+def _require_build_imports():
+    missing = [name for name in ("torch", "torchvision", "transformers", "timm") if importlib.util.find_spec(name) is None]
+    if missing:
+        raise RuntimeError(f"Build environment is missing Bone Age AI dependencies: {', '.join(missing)}")
 
 
 def _copytree_replace(src, dst):
@@ -113,6 +120,7 @@ def build_portable(args):
     dist_dir = base_dir / "dist" / APP_NAME
 
     if not args.skip_build:
+        _require_build_imports()
         subprocess.run([sys.executable, "-m", "PyInstaller", "-y", str(spec_path)], cwd=base_dir, check=True)
 
     if not dist_dir.exists():
