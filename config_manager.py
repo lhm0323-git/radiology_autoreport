@@ -15,10 +15,6 @@ WHOLE_BODY_TEMPLATE = (
     "Body Composition Assessment\n"
     "\n"
     "1.Total body fat percentage: {fat_percent}%\n"
-    "Result: {fat_result}\n"
-    "Reference:\n"
-    "Male:normal:<23%;overweight:23%~35%;obesity:>=35%\n"
-    "Female:normal:<25%;overweight:25%~38%;obesity:>=38%\n"
     "\n"
     "2.Estimated visceral adipose tissue (VAT area): {vat_area} cm2\n"
     "Result: {vat_result}\n"
@@ -216,10 +212,16 @@ def migrate_config(config):
         config["auto_detect"]["enabled"] = False
         config["manual_trigger_migration_20260604"] = True
 
+    legacy_whole_body_prefix = "Body Composition Assessment\n\n1.Total body fat percentage: {fat_percent}%\nResult: {fat_result}"
+    if config.get("whole_body_template", "").startswith(legacy_whole_body_prefix):
+        config["whole_body_template"] = defaults["whole_body_template"]
+
     config.setdefault("whole_body_template", defaults["whole_body_template"])
     config.setdefault("bmd_template", defaults["bmd_template"])
     config.setdefault("calcium_template", defaults["calcium_template"])
     config.setdefault("templates", {})
+    if config["templates"].get("whole_body", "").startswith(legacy_whole_body_prefix):
+        config["templates"]["whole_body"] = config["whole_body_template"]
     config["templates"].setdefault("whole_body", config.get("whole_body_template", WHOLE_BODY_TEMPLATE))
     config["templates"].setdefault("bmd", config.get("bmd_template", BMD_TEMPLATE))
     config["templates"].setdefault("calcium", config.get("calcium_template", CALCIUM_TEMPLATE))

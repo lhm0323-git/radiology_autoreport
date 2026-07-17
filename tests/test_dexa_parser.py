@@ -1,6 +1,6 @@
 import unittest
+import config_manager
 import parser as p
-
 
 def box(left, top, right, bottom):
     return [[left, top], [right, top], [right, bottom], [left, bottom]]
@@ -145,6 +145,19 @@ class TestDexaParser(unittest.TestCase):
 
         self.assertEqual(data["fat_percent"], 32.5)
         self.assertEqual(data["vat_area"], 120.0)
+
+    def test_whole_body_report_fat_section_shows_value_only(self):
+        report, _ = p.apply_clinical_logic(
+            {"Sex": "Female"},
+            "whole_body",
+            {"fat_percent": 42.5, "vat_area": None, "lean_index": None, "ag_ratio": None},
+            {"whole_body_template": config_manager.WHOLE_BODY_TEMPLATE},
+        )
+
+        self.assertIn("1.Total body fat percentage: 42.5%", report)
+        self.assertNotIn("Result: Obesity", report)
+        self.assertNotIn("Male:normal", report)
+        self.assertNotIn("Female:normal", report)
 
     def test_ris_detects_calcium_mode(self):
         mode = p.detect_mode_from_ris(["Cardiac CT", "钙化指数分析(No Contrast)"])
