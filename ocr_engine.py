@@ -1,5 +1,20 @@
 import threading
 
+
+def bmd_warm_up_shapes(config, monitor_size):
+    width, height = monitor_size
+    roi_bmd = (config or {}).get("roi_bmd", {})
+    shapes = []
+    for key in ("patient_info", "results"):
+        roi = roi_bmd.get(key)
+        if roi:
+            shapes.append((
+                max(1, int(height * roi["height_pct"])),
+                max(1, int(width * roi["width_pct"])),
+            ))
+    return shapes
+
+
 class OCREngine:
     def __init__(self, config=None):
         self.config = config or {}
@@ -61,6 +76,32 @@ class OCREngine:
 
             self.extract_text(patient)
             self.extract_text(table)
+
+            monitor_size = (1920, 1080)
+            try:
+                import mss
+
+                monitor_idx = int(self.config.get("monitors", {}).get("dexa_bmd", 1))
+                with mss.mss() as sct:
+                    if monitor_idx >= len(sct.monitors):
+                        monitor_idx = 1
+                    monitor = sct.monitors[monitor_idx]
+                    monitor_size = (monitor["width"], monitor["height"])
+            except Exception:
+                pass
+
+            for h, w in bmd_warm_up_shapes(self.config, monitor_size):
+                img = np.zeros((h, w, 3), dtype=np.uint8)
+                lines = [
+                    "1968/09/27 074Y F",
+                    "Region   BMD   T-score   Z-score",
+                    "NECK     0.533  -2.9     -0.3",
+                    "TOTAL    0.694  -2.0      0.3",
+                ]
+                for i, line in enumerate(lines):
+                    y = min(h - 8, 32 + i * 38)
+                    cv2.putText(img, line, (8, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (235, 235, 235), 2)
+                self.extract_text(img)
             print("[OCR] Warm-up complete.")
         except Exception as e:
             print(f"[OCR] Warm-up failed: {e}")
